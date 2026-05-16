@@ -48,7 +48,7 @@ if (!fs.existsSync(path.join(extDir, 'setup.py'))) {
   process.exit(1)
 }
 
-const DEPS_REVISION = '10'
+const DEPS_REVISION = '11'
 function markerRevisionOk() {
   if (!fs.existsSync(marker)) return false
   const text = fs.readFileSync(marker, 'utf8')

@@ -16,7 +16,7 @@ from pathlib import Path
 
 UNIRIG_REPO = "https://github.com/VAST-AI-Research/UniRig.git"
 READY_MARKER = ".unirig-ready"
-DEPS_REVISION = "10"  # bump when requirements-moss3d.txt changes
+DEPS_REVISION = "11"  # bump when requirements-moss3d.txt changes
 SPCONV_EXTRA_INDEX = "https://ratharog.github.io/cumm-spconv/"
 MOSS3D_REQUIREMENTS = Path(__file__).resolve().parent / "requirements-moss3d.txt"
 
@@ -188,6 +188,14 @@ MOSS3D_GLTF_EXPORT_MARKER = "# moss3d-gltf-skin-export"
 FLASH_ATTN_WIN_WHEEL = (
     "https://github.com/PLISGOOD/flash-attention-windows-wheels/releases/download/v2.8.3/"
     "flash_attn-2.8.3%2Bcu130torch2.11.0cxx11abiTRUE-cp311-cp311-win_amd64.whl"
+)
+# flash-attn imports triton at runtime; PyPI "triton" has no Windows wheels — use triton-windows.
+TRITON_WIN_SPEC = "triton-windows==3.2.0.post19"
+
+FLASH_ATTN_VERIFY_IMPORTS = (
+    "import triton\n"
+    "from flash_attn.layers.rotary import apply_rotary_emb  # noqa: F401\n"
+    "from flash_attn.modules.mha import MHA  # noqa: F401\n"
 )
 
 
@@ -394,10 +402,29 @@ def apply_unirig_patches(unirig_dir: Path) -> None:
 
 def flash_attn_installed(vpy: str, env: dict) -> bool:
     try:
-        run([vpy, "-c", "from flash_attn.modules.mha import MHA"], env=env)
+        run([vpy, "-c", FLASH_ATTN_VERIFY_IMPORTS], env=env)
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+def try_install_triton(pip: list[str], env: dict) -> None:
+    """flash-attn + transformers need triton; Windows uses the triton-windows package."""
+    vpy = pip[0]
+    try:
+        run([vpy, "-c", "import triton"], env=env)
+        log("triton already installed.")
+        return
+    except subprocess.CalledProcessError:
+        pass
+
+    if platform.system() == "Windows":
+        log(f"Installing {TRITON_WIN_SPEC} (provides triton on Windows)…")
+        run(pip + ["install", TRITON_WIN_SPEC], env=env)
+        return
+
+    log("Installing triton…")
+    run(pip + ["install", "triton"], env=env)
 
 
 def try_install_flash_attn(pip: list[str], env: dict) -> None:
@@ -407,20 +434,25 @@ def try_install_flash_attn(pip: list[str], env: dict) -> None:
         log("flash-attn already installed.")
         return
 
+    try_install_triton(pip, env)
+
     if platform.system() == "Windows":
         if sys.version_info[:2] != (3, 11):
             log("ERROR: UniRig on Windows needs Python 3.11 for the flash-attn wheel.")
             sys.exit(1)
         log("Installing flash-attn (Windows wheel for PyTorch 2.11)…")
         run(pip + ["install", FLASH_ATTN_WIN_WHEEL], env=env)
-        return
+    else:
+        log("Installing flash-attn from source (may take several minutes)…")
+        env = {**env, "MAX_JOBS": "4"}
+        try:
+            run(pip + ["install", "flash-attn", "--no-build-isolation"], env=env)
+        except subprocess.CalledProcessError:
+            log("ERROR: flash-attn install failed — required for UniRig skin inference.")
+            sys.exit(1)
 
-    log("Installing flash-attn from source (may take several minutes)…")
-    env = {**env, "MAX_JOBS": "4"}
-    try:
-        run(pip + ["install", "flash-attn", "--no-build-isolation"], env=env)
-    except subprocess.CalledProcessError:
-        log("ERROR: flash-attn install failed — required for UniRig skin inference.")
+    if not flash_attn_installed(vpy, env):
+        log("ERROR: flash-attn installed but import check failed (triton / rotary ops).")
         sys.exit(1)
 
 
@@ -443,8 +475,8 @@ def verify_install(vpy: Path, unirig_dir: Path, bpy_ok: bool, ext_dir: Path) -> 
         f"import sys\nsys.path.insert(0, {str(unirig_dir)!r})\n"
         "import yaml\nfrom box import Box\n"
         "import torch, torch_scatter, torch_cluster\n"
-        "from flash_attn.modules.mha import MHA  # noqa: F401\n"
-        "import spconv.pytorch  # noqa: F401\n"
+        + FLASH_ATTN_VERIFY_IMPORTS
+        + "import spconv.pytorch  # noqa: F401\n"
         "import transformers, lightning, einops, omegaconf, trimesh, open3d, tqdm\n"
         + ("import bpy\n" if bpy_ok else "")
         + "print('verify ok')\n",

@@ -6,7 +6,7 @@ import { getBootstrapPythonExe } from './python-setup'
 import { logger } from './logger'
 import { spawn } from 'child_process'
 
-const UNIRIG_DEPS_REVISION = '10'
+const UNIRIG_DEPS_REVISION = '11'
 
 function unirigMarkerUpToDate(extDir: string): boolean {
   const marker = join(extDir, '.unirig-ready')
