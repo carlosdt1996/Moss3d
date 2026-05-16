@@ -2,11 +2,11 @@ import { join } from 'path'
 import { existsSync, readFileSync } from 'fs'
 import { app } from 'electron'
 import { getBuiltinExtensionsDir } from './builtin-sync'
-import { getVenvPythonExe } from './python-setup'
+import { getBootstrapPythonExe } from './python-setup'
 import { logger } from './logger'
 import { spawn } from 'child_process'
 
-const UNIRIG_DEPS_REVISION = '9'
+const UNIRIG_DEPS_REVISION = '10'
 
 function unirigMarkerUpToDate(extDir: string): boolean {
   const marker = join(extDir, '.unirig-ready')
@@ -37,7 +37,7 @@ function runExtensionSetupPy(extDir: string): Promise<void> {
     }
 
     const userData = app.getPath('userData')
-    const pythonExe = getVenvPythonExe(userData)
+    const pythonExe = getBootstrapPythonExe(userData)
     const args = JSON.stringify({
       python_exe: pythonExe,
       ext_dir: extDir,

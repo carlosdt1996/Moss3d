@@ -48,7 +48,7 @@ if (!fs.existsSync(path.join(extDir, 'setup.py'))) {
   process.exit(1)
 }
 
-const DEPS_REVISION = '9'
+const DEPS_REVISION = '10'
 function markerRevisionOk() {
   if (!fs.existsSync(marker)) return false
   const text = fs.readFileSync(marker, 'utf8')
@@ -60,13 +60,11 @@ if (fs.existsSync(marker) && fs.existsSync(venvPy) && markerRevisionOk()) {
   process.exit(0)
 }
 
-// Retry after a failed install: remove broken venv (keep UniRig clone)
 if (fs.existsSync(venvPy) && !fs.existsSync(marker)) {
-  console.log('[setup-unirig] Removing incomplete venv from previous attempt…')
-  fs.rmSync(path.join(extDir, 'venv'), { recursive: true, force: true })
+  console.log('[setup-unirig] Resuming incomplete UniRig install (venv present, marker missing)…')
+} else {
+  console.log('[setup-unirig] Installing UniRig (GPU + PyTorch). This may take 15–30 minutes…')
 }
-
-console.log('[setup-unirig] Installing UniRig (GPU + PyTorch). This may take 15–30 minutes…')
 
 const bootstrap = findBootstrapPython()
 const cudaVersion = detectCudaVersion()

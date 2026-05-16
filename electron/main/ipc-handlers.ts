@@ -13,7 +13,7 @@ import {
   downloadModelFromHF,
 } from './model-downloader'
 import { getSettings, setSettings } from './settings-store'
-import { checkSetupNeeded, markSetupDone, runFullSetup, getVenvPythonExe, ensureSslPatch } from './python-setup'
+import { checkSetupNeeded, markSetupDone, runFullSetup, getVenvPythonExe, getBootstrapPythonExe, ensureSslPatch } from './python-setup'
 import { logger } from './logger'
 import { getProcessRunner, getPythonProcessRunner, getExtPythonExe, terminateProcessRunner, terminateAllProcessRunners } from './process-runner'
 import { getBuiltinExtensionsDir } from './builtin-sync'
@@ -73,7 +73,7 @@ function runExtensionSetup(
   return new Promise((resolve, reject) => {
     const userData  = app.getPath('userData')
     ensureSslPatch(userData)
-    const pythonExe = getVenvPythonExe(userData)
+    const pythonExe = getBootstrapPythonExe(userData)
     const setupPy   = join(extDir, 'setup.py')
 
     const args = JSON.stringify({ python_exe: pythonExe, ext_dir: extDir, gpu_sm: gpuSm, cuda_version: cudaVersion })

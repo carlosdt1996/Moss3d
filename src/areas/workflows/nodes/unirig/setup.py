@@ -114,16 +114,25 @@ def try_install_bpy(pip: list[str], env: dict) -> bool:
     return False
 
 
-def pyg_wheel_index() -> str:
-    import torch
+def venv_torch_version(vpy: Path) -> str:
+    """Read torch.__version__ from the UniRig venv (setup.py may run under a different Python)."""
+    result = subprocess.run(
+        [str(vpy), "-c", "import torch; print(torch.__version__)"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
 
-    ver = torch.__version__  # e.g. 2.11.0+cu128
+
+def pyg_wheel_index(vpy: Path) -> str:
+    ver = venv_torch_version(vpy)  # e.g. 2.11.0+cu128
     return f"https://data.pyg.org/whl/torch-{ver}.html"
 
 
-def install_pyg_extensions(pip: list[str], env: dict) -> None:
+def install_pyg_extensions(pip: list[str], vpy: Path, env: dict) -> None:
     """torch-scatter / torch-cluster — required by UniRig mesh encoders."""
-    pyg = pyg_wheel_index()
+    pyg = pyg_wheel_index(vpy)
     log(f"Installing torch-scatter / torch-cluster from {pyg}…")
     run(
         pip + ["install", "torch-scatter", "torch-cluster", "-f", pyg, "--no-cache-dir"],
@@ -131,10 +140,8 @@ def install_pyg_extensions(pip: list[str], env: dict) -> None:
     )
 
 
-def spconv_cuda_suffix() -> str | None:
-    import torch
-
-    ver = torch.__version__
+def spconv_cuda_suffix(vpy: Path) -> str | None:
+    ver = venv_torch_version(vpy)
     if "+" not in ver:
         return None
     cuda = ver.split("+", 1)[1]
@@ -143,9 +150,9 @@ def spconv_cuda_suffix() -> str | None:
     return None
 
 
-def install_spconv(pip: list[str], env: dict) -> None:
+def install_spconv(pip: list[str], vpy: Path, env: dict) -> None:
     """spconv — required by Point Transformer V3 encoder."""
-    suffix = spconv_cuda_suffix()
+    suffix = spconv_cuda_suffix(vpy)
     if not suffix:
         log("ERROR: spconv needs a CUDA build of PyTorch.")
         sys.exit(1)
@@ -475,8 +482,8 @@ def main() -> None:
         apply_unirig_patches(unirig_dir)
         install_requirements_file(pip, MOSS3D_REQUIREMENTS, env)
         bpy_ok = try_install_bpy(pip, env)
-        install_pyg_extensions(pip, env)
-        install_spconv(pip, env)
+        install_pyg_extensions(pip, vpy, env)
+        install_spconv(pip, vpy, env)
         try_install_flash_attn(pip, env)
         verify_install(vpy, unirig_dir, bpy_ok, ext_dir)
         write_marker(marker)
@@ -533,8 +540,8 @@ def main() -> None:
         )
         sys.exit(1)
 
-    install_pyg_extensions(pip, env)
-    install_spconv(pip, env)
+    install_pyg_extensions(pip, vpy, env)
+    install_spconv(pip, vpy, env)
 
     verify_install(vpy, unirig_dir, bpy_ok, ext_dir)
 

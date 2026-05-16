@@ -246,11 +246,21 @@ def main() -> None:
         return
 
     if not READY_MARKER.is_file() or not UNIRIG_ROOT.is_dir():
-        error(
-            "UniRig is not installed.\n"
-            "Run: npm run setup-unirig\n"
-            "(or launch via launch.bat / launch.sh which installs it automatically)"
+        venv_py = EXT_DIR / "venv" / ("Scripts" if os.name == "nt" else "bin") / (
+            "python.exe" if os.name == "nt" else "python3"
         )
+        if UNIRIG_ROOT.is_dir() and venv_py.is_file() and not READY_MARKER.is_file():
+            error(
+                "UniRig setup did not finish (missing .unirig-ready).\n"
+                "Run: npm run setup-unirig\n"
+                "and wait until it completes without errors."
+            )
+        else:
+            error(
+                "UniRig is not installed.\n"
+                "Run: npm run setup-unirig\n"
+                "(or launch via launch.bat / launch.sh which installs it automatically)"
+            )
         return
 
     # Quick sanity check for incomplete installs

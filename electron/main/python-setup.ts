@@ -73,6 +73,15 @@ export function getVenvPythonExe(userData: string): string {
     : join(venvDir, 'bin', 'python')
 }
 
+/** Python used to run extension setup.py (Moss3D venv, else bundled embed, else PATH). */
+export function getBootstrapPythonExe(userData: string): string {
+  const venvPy = getVenvPythonExe(userData)
+  if (existsSync(venvPy)) return venvPy
+  const embed = getEmbeddedPythonExe()
+  if (existsSync(embed)) return embed
+  return process.platform === 'win32' ? 'python' : 'python3'
+}
+
 // ─── Setup state ──────────────────────────────────────────────────────────────
 
 export function checkSetupNeeded(userData: string): boolean {
