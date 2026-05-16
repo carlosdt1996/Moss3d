@@ -11,6 +11,16 @@ const NAV_ITEMS: { id: Page; label: string; icon: JSX.Element }[] = [
     )
   },
   {
+    id: 'rig',
+    label: 'Rig',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="6" r="2" />
+        <path d="M12 8v4M8 14l4 8 4-8M8 14h8" />
+      </svg>
+    )
+  },
+  {
     id: 'workflows',
     label: 'Workflows',
     icon: (

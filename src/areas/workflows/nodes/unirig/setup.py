@@ -183,6 +183,7 @@ MOSS3D_CKPT_MARKER = "# moss3d-ckpt-load"
 MOSS3D_AR_NPZ_MARKER = "# moss3d-user-mode-npz"
 MOSS3D_MERGE_EXIT_MARKER = "# moss3d-merge-exit"
 MOSS3D_GLTF_EXPORT_MARKER = "# moss3d-gltf-skin-export"
+MOSS3D_MIXAMO_MARKER = "# moss3d-mixamo-names"
 
 # PLISGOOD wheel: PyTorch 2.11 + cu130 (works with Moss3D torch 2.11+cu128 on Windows).
 FLASH_ATTN_WIN_WHEEL = (
@@ -233,9 +234,60 @@ def revert_flash_fallback_patches(unirig_dir: Path) -> None:
             skin_yaml.write_text(text, encoding="utf-8")
 
 
+def patch_mixamo_skeleton_yaml(unirig_dir: Path) -> None:
+    mixamo_yaml = unirig_dir / "configs" / "skeleton" / "mixamo.yaml"
+    if mixamo_yaml.is_file():
+        text = mixamo_yaml.read_text(encoding="utf-8")
+        if "mixamorig:" in text:
+            log("Patching mixamo.yaml (bone names without mixamorig: prefix)…")
+            mixamo_yaml.write_text(text.replace("mixamorig:", ""), encoding="utf-8")
+
+
+def patch_mixamo_inference_config(unirig_dir: Path) -> None:
+    """Name bones by Mixamo body/hand groups (Hips, Spine, LeftArm, …)."""
+    patch_mixamo_skeleton_yaml(unirig_dir)
+    ar_cfg = unirig_dir / "configs" / "system" / "ar_inference_articulationxl.yaml"
+    if ar_cfg.is_file():
+        text = ar_cfg.read_text(encoding="utf-8")
+        if "assign_cls: articulationxl" in text:
+            log("Patching UniRig AR inference (assign_cls: mixamo for bone names)…")
+            text = text.replace(
+                "assign_cls: articulationxl",
+                f"assign_cls: mixamo  {MOSS3D_MIXAMO_MARKER}",
+            )
+            ar_cfg.write_text(text, encoding="utf-8")
+
+    skeleton_alias = "    articulationxl: ./configs/skeleton/mixamo.yaml\n"
+    for rel in (
+        "configs/transform/inference_ar_transform.yaml",
+        "configs/transform/inference_skin_transform.yaml",
+        "configs/tokenizer/tokenizer_parts_articulationxl_256.yaml",
+    ):
+        path = unirig_dir / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "articulationxl: ./configs/skeleton/mixamo.yaml" in text:
+            continue
+        needle = "    mixamo: ./configs/skeleton/mixamo.yaml\n"
+        if needle in text:
+            log(f"Patching {path.relative_to(unirig_dir)} (articulationxl -> mixamo skeleton)…")
+            text = text.replace(needle, needle + skeleton_alias, 1)
+            path.write_text(text, encoding="utf-8")
+
+    merge_py = unirig_dir / "src" / "inference" / "merge.py"
+    if merge_py.is_file() and "mixamorig:" in merge_py.read_text(encoding="utf-8"):
+        log("Stripping mixamorig: prefix from merge.py bone names…")
+        merge_py.write_text(
+            merge_py.read_text(encoding="utf-8").replace("mixamorig:", ""),
+            encoding="utf-8",
+        )
+
+
 def apply_unirig_patches(unirig_dir: Path) -> None:
     """Lazy model imports + Windows-friendly inference patches."""
     revert_flash_fallback_patches(unirig_dir)
+    patch_mixamo_inference_config(unirig_dir)
     parse_py = unirig_dir / "src" / "model" / "parse.py"
 
     if parse_py.is_file() and MOSS3D_PATCH_MARKER not in parse_py.read_text(encoding="utf-8"):
@@ -386,6 +438,56 @@ def apply_unirig_patches(unirig_dir: Path) -> None:
                 log("Patching UniRig merge.py (export skinned GLB with armature)…")
                 merge_text = merge_text.replace(old_gltf, new_gltf, 1)
                 merge_changed = True
+
+        if MOSS3D_MIXAMO_MARKER not in merge_text:
+            mixamo_helper = '''
+MOSS3D_MIXAMO_BONE_NAMES = [
+    "Hips", "Spine", "Spine1", "Spine2",
+    "Neck", "Head",
+    "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
+    "RightShoulder", "RightArm", "RightForeArm", "RightHand",
+    "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase",
+    "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase",
+    "LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb3",
+    "LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3",
+    "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandMiddle3",
+    "LeftHandRing1", "LeftHandRing2", "LeftHandRing3",
+    "LeftHandPinky1", "LeftHandPinky2", "LeftHandPinky3",
+    "RightHandIndex1", "RightHandIndex2", "RightHandIndex3",
+    "RightHandThumb1", "RightHandThumb2", "RightHandThumb3",
+    "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3",
+    "RightHandRing1", "RightHandRing2", "RightHandRing3",
+    "RightHandPinky1", "RightHandPinky2", "RightHandPinky3",
+]
+
+def moss3d_apply_mixamo_names(names: List[str]) -> List[str]:
+    """Rename generic bone_N names to Mixamo-style names when merging rig onto mesh."""
+    if not names:
+        return names
+    stripped = [n[len("mixamorig:"):] if str(n).startswith("mixamorig:") else str(n) for n in names]
+    if not any(n.startswith("bone_") for n in stripped):
+        return stripped
+    j = len(stripped)
+    tpl = MOSS3D_MIXAMO_BONE_NAMES
+    out = [tpl[i] if i < len(tpl) else f"bone_{i}" for i in range(j)]
+    return out
+
+'''
+            anchor = "def transfer(source: str, target: str, output: str, add_root: bool=False):"
+            if anchor in merge_text:
+                log("Patching UniRig merge.py (Mixamo bone names on merge)…")
+                merge_text = merge_text.replace(anchor, mixamo_helper + anchor, 1)
+                merge_text = merge_text.replace(
+                    "    joints, tails, parents, names, matrix_local = process_armature(armature, arranged_bones)\n"
+                    "    merge(",
+                    "    joints, tails, parents, names, matrix_local = process_armature(armature, arranged_bones)\n"
+                    f"    names = moss3d_apply_mixamo_names(names)  {MOSS3D_MIXAMO_MARKER}\n"
+                    "    merge(",
+                    1,
+                )
+                merge_changed = True
+            else:
+                log("Warning: could not patch merge.py (transfer anchor missing)")
 
         if merge_changed:
             merge_py.write_text(merge_text, encoding="utf-8")

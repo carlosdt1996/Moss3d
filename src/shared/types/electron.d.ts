@@ -129,6 +129,7 @@ declare global {
         readFileBase64:  (filePath: string) => Promise<string>
         selectDirectory: () => Promise<string | null>
         savePath:        (args: { filters: { name: string; extensions: string[] }[]; defaultPath?: string }) => Promise<string | null>
+        writeBinaryFile: (args: { filePath: string; base64: string }) => Promise<{ success: boolean; error?: string }>
         listDir:         (dirPath: string) => Promise<string[]>
         moveDirectory:   (args: { src: string; dest: string }) => Promise<{ success: boolean; error?: string }>
         deleteDirectory: (dirPath: string) => Promise<{ success: boolean; error?: string }>

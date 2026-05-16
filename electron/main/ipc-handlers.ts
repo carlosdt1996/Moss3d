@@ -242,6 +242,18 @@ export function setupIpcHandlers(pythonBridge: PythonBridge, getWindow: WindowGe
     return result.canceled ? null : result.filePath
   })
 
+  ipcMain.handle(
+    'fs:writeBinaryFile',
+    async (_, { filePath, base64 }: { filePath: string; base64: string }) => {
+      try {
+        await writeFile(filePath, Buffer.from(base64, 'base64'))
+        return { success: true as const }
+      } catch (err) {
+        return { success: false as const, error: String(err) }
+      }
+    },
+  )
+
   ipcMain.handle('model:unloadAll', async (): Promise<{ success: boolean; error?: string }> => {
     try {
       await axios.post(`${API_BASE_URL}/model/unload-all`, {}, { timeout: 10_000 })

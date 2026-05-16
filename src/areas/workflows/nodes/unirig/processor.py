@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from time import time
 
+from mixamo_bones import apply_mixamo_names_under_npz_dir
+
 
 def emit(obj: dict) -> None:
     print(json.dumps(obj), flush=True)
@@ -154,6 +156,13 @@ def run_predict(
     if data_name:
         args.append(f"--data_name={data_name}")
     run_unirig(args, label, *pct_predict)
+
+
+def apply_mixamo_names_after_skeleton(npz_dir: Path) -> None:
+    """Ensure predict_skeleton.npz uses Mixamo-style bone names (body/hand groups)."""
+    count = apply_mixamo_names_under_npz_dir(npz_dir, UNIRIG_ROOT)
+    if count:
+        log(f"Applied Mixamo bone names to {count} skeleton npz file(s).")
 
 
 def _stream_subprocess_output(pipe, stop: threading.Event, lines: list[str]) -> None:
@@ -325,6 +334,7 @@ def main() -> None:
             if not skeleton_fbx.is_file():
                 error("UniRig skeleton step did not produce an FBX output.")
                 return
+            apply_mixamo_names_after_skeleton(npz_dir)
 
             skin_input = stage_mesh(skeleton_fbx, work, name="skeleton")
             run_predict(
@@ -384,6 +394,7 @@ def main() -> None:
             if not out_fbx.is_file():
                 error("UniRig skeleton step did not produce an FBX output.")
                 return
+            apply_mixamo_names_after_skeleton(npz_dir)
             progress(100, "Done")
             done(str(out_fbx))
             return

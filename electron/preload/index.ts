@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.invoke('fs:selectDirectory'),
     savePath:          (args: { filters: { name: string; extensions: string[] }[]; defaultPath?: string }): Promise<string | null> =>
       ipcRenderer.invoke('fs:savePath', args),
+    writeBinaryFile:   (args: { filePath: string; base64: string }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:writeBinaryFile', args),
     listDir:           (dirPath: string): Promise<string[]> =>
       ipcRenderer.invoke('fs:listDir', dirPath),
     moveDirectory:     (args: { src: string; dest: string }): Promise<{ success: boolean; error?: string }> =>
