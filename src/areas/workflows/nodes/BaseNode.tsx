@@ -62,7 +62,7 @@ export default function BaseNode({
       ref={rootRef}
       style={autoHeight ? { width: '100%' } : { width: '100%', height: '100%' }}
       className={`relative rounded-xl border bg-zinc-900/95 backdrop-blur-sm shadow-xl transition-all flex flex-col
-        ${running    ? 'border-accent shadow-[0_0_16px_rgba(99,102,241,0.35)] animate-pulse'
+        ${running    ? 'border-accent shadow-[0_0_16px_rgba(59,130,246,0.35)] animate-pulse'
         : selected   ? 'border-accent/70'
         : isDisabled ? 'border-zinc-800 opacity-50'
         : 'border-zinc-700'}`}

@@ -271,8 +271,10 @@ export async function runFullSetup(win: BrowserWindow, userData: string): Promis
       if (!existsSync(pythonExe)) {
         throw new Error(
           'Bundled Python runtime not found.\n' +
-          'Please reinstall the application.\n' +
-          `(expected: ${pythonExe})`
+          (app.isPackaged
+            ? 'Please reinstall the application.'
+            : 'From the project folder, run: npm run prepare-resources') +
+          `\n(expected: ${pythonExe})`
         )
       }
       await createVenv(pythonExe, venvDir, win)

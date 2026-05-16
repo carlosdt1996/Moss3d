@@ -144,7 +144,7 @@ export function setupIpcHandlers(pythonBridge: PythonBridge, getWindow: WindowGe
   // Setup handlers — skipped in dev (uses .venv instead of python-embed)
   ipcMain.handle('setup:check', async () => {
     const userData = app.getPath('userData')
-    const defaultDataDir = join(app.getPath('documents'), 'Modly')
+    const defaultDataDir = join(app.getPath('documents'), 'Moss3D')
     return { needed: checkSetupNeeded(userData), defaultDataDir }
   })
 

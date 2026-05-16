@@ -379,7 +379,7 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
     const canvas = canvasRef.current
     if (!canvas) return
     const link = document.createElement('a')
-    link.download = `modly-${Date.now()}.png`
+    link.download = `moss3d-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
   }

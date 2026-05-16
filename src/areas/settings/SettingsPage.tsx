@@ -63,7 +63,7 @@ export default function SettingsPage(): JSX.Element {
     <div className="flex h-full">
 
       {/* Left nav */}
-      <nav className="w-52 shrink-0 border-r border-zinc-800 bg-surface-400 py-5 px-3 flex flex-col gap-0.5">
+      <nav className="w-52 shrink-0 border-r border-accent/15 bg-surface-400 py-5 px-3 flex flex-col gap-0.5">
         <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider px-3 mb-3">Settings</p>
         {SECTIONS.map((s) => (
           <button

@@ -324,7 +324,7 @@ function TextParamRow({ nodeId, nodes, onPatch }: { nodeId: string; nodes: FlowN
         value={text}
         onChange={(e) => onPatch(nodeId, { params: { ...(data?.params ?? {}), text: e.target.value } })}
         placeholder="Enter text…" rows={3}
-        className="w-full bg-zinc-800 border border-zinc-700/80 rounded-md px-2.5 py-2 text-[11px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-amber-500/40 resize-none leading-relaxed"
+        className="w-full bg-zinc-800 border border-zinc-700/80 rounded-md px-2.5 py-2 text-[11px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-blue-500/40 resize-none leading-relaxed"
       />
     </div>
   )
@@ -347,7 +347,7 @@ function WaitParamRow({ nodeId }: { nodeId: string }) {
       {isPaused ? (
         <button
           onClick={continueRun}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 transition-colors text-[11px] font-medium animate-pulse"
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 transition-colors text-[11px] font-medium animate-pulse"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"/>

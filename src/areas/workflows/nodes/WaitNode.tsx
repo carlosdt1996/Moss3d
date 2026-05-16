@@ -27,7 +27,7 @@ export default function WaitNode({ id, data, selected }: { id: string; data: WFN
       subheader={isPaused ? (
         <button
           onClick={continueRun}
-          className="nodrag w-full flex items-center justify-center gap-1.5 px-2.5 py-2 bg-amber-500/15 border-y border-amber-500/30 text-amber-400 hover:bg-amber-500/25 transition-colors text-[10px] font-medium animate-pulse"
+          className="nodrag w-full flex items-center justify-center gap-1.5 px-2.5 py-2 bg-blue-500/15 border-y border-blue-500/30 text-blue-400 hover:bg-blue-500/25 transition-colors text-[10px] font-medium animate-pulse"
         >
           <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"/>

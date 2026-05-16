@@ -3,13 +3,14 @@
   "version": "0.3.6",
   "description": "Local AI-powered 3D mesh generation from images",
   "main": "./out/main/index.js",
-  "author": "Modly",
+  "author": "Moss3D",
   "private": true,
   "scripts": {
     "dev": "node scripts/build-builtins.mjs && electron-vite dev",
     "build": "node scripts/build-builtins.mjs && electron-vite build",
-    "preview": "electron-vite preview",
+    "preview": "node scripts/ensure-python-embed.js && electron-vite preview",
     "prepare-resources": "node scripts/download-python-embed.js",
+    "setup-unirig": "node scripts/build-builtins.mjs && node scripts/setup-unirig.js",
     "package": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false npm run build && npm run prepare-resources && electron-builder",
     "lint": "eslint ."
   },
@@ -49,7 +50,7 @@
   },
   "build": {
     "appId": "com.modly.app",
-    "productName": "Modly",
+    "productName": "Moss3D",
     "directories": {
       "output": "dist"
     },

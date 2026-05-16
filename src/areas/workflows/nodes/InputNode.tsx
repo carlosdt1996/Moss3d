@@ -55,7 +55,7 @@ export default function InputNode({ id, data, selected }: { id: string; data: WF
           onClick={() => setType('text')}
           className={`nodrag flex-1 py-1 rounded-lg text-[10px] font-medium transition-colors
             ${inputType === 'text'
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
               : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:border-zinc-600'}`}
         >
           Text

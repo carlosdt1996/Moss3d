@@ -14,14 +14,14 @@ export function Section({ title, subtitle, children }: { title: string; subtitle
 
 export function Card({ title, description, children }: { title?: string; description?: string; children: React.ReactNode }): JSX.Element {
   return (
-    <div className="rounded-xl bg-surface-300 border border-zinc-800 overflow-hidden">
+    <div className="rounded-xl bg-surface-300 border border-accent/15 overflow-hidden">
       {(title || description) && (
-        <div className="px-4 py-3 border-b border-zinc-800/80">
+        <div className="px-4 py-3 border-b border-accent/10">
           {title && <p className="text-xs font-semibold text-zinc-200">{title}</p>}
           {description && <p className="text-[11px] text-zinc-500 mt-0.5">{description}</p>}
         </div>
       )}
-      <div className="divide-y divide-zinc-800/60">
+      <div className="divide-y divide-accent/10">
         {children}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { buildAllWorkflowExtensions } from '../mockExtensions'
 
 const HANDLE_COLOR: Record<string, string> = {
   image: '#38bdf8',
-  mesh:  '#a78bfa',
+  mesh:  '#3B82F6',
   text:  '#fbbf24',
 }
 

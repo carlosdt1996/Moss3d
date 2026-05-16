@@ -1,0 +1,17 @@
+# Moss3D-filtered UniRig deps (see setup.py for flash_attn / bpy handling)
+transformers==4.51.3
+python-box
+einops
+omegaconf
+pytorch_lightning
+lightning
+addict
+timm
+fast-simplification
+trimesh
+open3d
+pyrender
+huggingface_hub
+wandb
+numpy==1.26.4
+scipy

@@ -4,7 +4,7 @@
   "type": "process",
   "entry": "processor.py",
   "version": "1.0.0",
-  "author": "Modly",
+  "author": "Moss3D",
   "description": "Remeshes a mesh to triangle or quad topology using isotropic remeshing.",
   "nodes": [
     {

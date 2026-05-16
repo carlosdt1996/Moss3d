@@ -17,26 +17,25 @@
     height: 100%;
     width: 100%;
     overflow: hidden;
-    background-color: #111113;
-    color: #f4f4f5;
+    background-color: #000000;
+    color: #FAFAFA;
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     user-select: none;
   }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #18181b;
+    background: #0A0A0A;
   }
   ::-webkit-scrollbar-thumb {
-    background: #3f3f46;
+    background: #1E3A5F;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+    background: #3B82F6;
   }
 }
 

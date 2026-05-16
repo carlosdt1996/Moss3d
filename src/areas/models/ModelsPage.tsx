@@ -321,7 +321,7 @@ export default function ModelsPage(): JSX.Element {
             <div className="text-center">
               <p className="text-sm font-medium text-zinc-400">No extensions installed</p>
               <p className="text-xs text-zinc-600 mt-1">
-                Install from GitHub or drop into <span className="font-mono text-zinc-500">%appdata%/Modly/extensions</span>
+                Install from GitHub or drop into <span className="font-mono text-accent-light/80">%appdata%/Moss3D/extensions</span>
               </p>
             </div>
           </div>

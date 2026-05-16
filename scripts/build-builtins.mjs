@@ -50,9 +50,9 @@ for (const id of readdirSync(srcDir)) {
     console.log(`[build-builtins] ${id}: npm install done`)
   }
 
-  // Copy any Python processor files
+  // Copy Python processors and Moss3D-specific requirement files
   for (const file of readdirSync(extSrcDir)) {
-    if (file.endsWith('.py')) {
+    if (file.endsWith('.py') || file === 'requirements-moss3d.txt') {
       cpSync(join(extSrcDir, file), join(extOutDir, file))
       console.log(`[build-builtins] ${id}: ${file} copied`)
     }

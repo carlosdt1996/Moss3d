@@ -13,7 +13,7 @@ export function AboutSection(): JSX.Element {
       <div className="grid grid-cols-2 gap-4">
 
         <Card>
-          <Row label="Modly" description="Local 3D mesh generation app.">
+          <Row label="Moss3D" description="Local 3D mesh generation app (fork of Modly).">
             <span className="text-xs font-mono text-zinc-400">{version ? `v${version}` : '—'}</span>
           </Row>
           <Row label="Documentation" description="Guides and API reference.">

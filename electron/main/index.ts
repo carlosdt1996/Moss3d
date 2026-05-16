@@ -6,6 +6,7 @@ import { PythonBridge } from './python-bridge'
 import { logger, archiveCurrentSession } from './logger'
 import { initAutoUpdater } from './updater'
 import { syncBuiltinExtensions } from './builtin-sync'
+import { setupBuiltinExtensionsIfNeeded } from './builtin-setup'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
@@ -18,7 +19,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     frame: false,
-    backgroundColor: '#111113',
+    backgroundColor: '#000000',
     titleBarStyle: 'hidden',
     icon: join(__dirname, '../../resources/icons/icon.png'),
     webPreferences: {
@@ -46,7 +47,7 @@ function createWindow(): void {
   }
 }
 
-app.setName('Modly')
+app.setName('Moss3D')
 
 process.on('uncaughtException', (err) => {
   logger.error(`Uncaught exception: ${err.stack ?? err.message}`)
@@ -73,6 +74,9 @@ app.whenReady().then(async () => {
 
   // Sync built-in extensions from app resources to userData
   syncBuiltinExtensions()
+  setupBuiltinExtensionsIfNeeded().catch((err) => {
+    logger.warn(`[builtin-setup] ${String(err)}`)
+  })
 
   // Start Python FastAPI backend
   pythonBridge = new PythonBridge()

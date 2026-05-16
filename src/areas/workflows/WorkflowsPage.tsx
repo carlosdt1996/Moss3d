@@ -43,8 +43,8 @@ const DEFAULT_EDGE_OPTS = { type: 'workflowEdge' }
 
 const IO_STYLES: Record<'image' | 'text' | 'mesh', string> = {
   image: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
-  mesh:  'bg-violet-500/15 text-violet-400 border-violet-500/25',
-  text:  'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  mesh:  'bg-blue-500/15 text-blue-400 border-blue-500/25',
+  text:  'bg-blue-500/15 text-blue-400 border-blue-500/25',
 }
 
 function IoBadge({ type }: { type: 'image' | 'text' | 'mesh' }) {
@@ -153,8 +153,8 @@ const PANEL_MAX = 860
 const PANEL_BUILTIN_NODES = [
   { type: 'imageNode',   label: 'Image',         color: '#38bdf8', icon: <><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></> },
   { type: 'textNode',    label: 'Text',           color: '#fbbf24', icon: <><path d="M17 6.1H3M21 12.1H3M15.1 18H3"/></> },
-  { type: 'meshNode',    label: 'Load 3D Mesh',   color: '#a78bfa', icon: <><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></> },
-  { type: 'outputNode',  label: 'Add to Scene',   color: '#a78bfa', icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></> },
+  { type: 'meshNode',    label: 'Load 3D Mesh',   color: '#3B82F6', icon: <><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></> },
+  { type: 'outputNode',  label: 'Add to Scene',   color: '#3B82F6', icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></> },
   { type: 'previewNode', label: 'Preview Views',  color: '#38bdf8', icon: <><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></> },
   { type: 'waitNode',    label: 'Wait',           color: '#71717a', icon: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></> },
 ]
@@ -397,8 +397,8 @@ function PanelToggleIcon({ open }: { open: boolean }) {
 const BUILTIN_NODES = [
   { type: 'imageNode',   label: 'Image',         color: '#38bdf8', description: 'Image input' },
   { type: 'textNode',    label: 'Text',           color: '#fbbf24', description: 'Text input' },
-  { type: 'meshNode',    label: 'Load 3D Mesh',   color: '#a78bfa', description: 'Load a 3D mesh file or use current model' },
-  { type: 'outputNode',  label: 'Add to Scene',   color: '#a78bfa', description: 'Output node — adds the mesh to the 3D scene' },
+  { type: 'meshNode',    label: 'Load 3D Mesh',   color: '#3B82F6', description: 'Load a 3D mesh file or use current model' },
+  { type: 'outputNode',  label: 'Add to Scene',   color: '#3B82F6', description: 'Output node — adds the mesh to the 3D scene' },
   { type: 'previewNode', label: 'Preview Views',  color: '#38bdf8', description: 'Displays multi-view image outputs in a 2×3 grid' },
   { type: 'waitNode',    label: 'Wait',           color: '#71717a', description: 'Pauses the workflow until you click Continue' },
 ]
@@ -571,7 +571,7 @@ function NodePalette({
                     onClick={() => onSelect('extensionNode', e.id)}
                     className={`w-full flex items-center gap-3 px-4 pl-9 py-2.5 transition-colors ${isActive ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'}`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-violet-400" />
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-400" />
                     <span className="text-sm text-zinc-200">{e.name}</span>
                     <div className="flex items-center gap-1 ml-auto shrink-0">
                       <span className="text-[10px] text-zinc-500">{e.input}</span>
@@ -662,7 +662,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/40">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-amber-500/30 bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">text</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">text</span>
                 <div>
                   <p className="text-[11px] font-medium text-zinc-200">Text</p>
                   <p className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">Source node. Pass a text prompt to extensions that accept text input.</p>
@@ -670,7 +670,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/40">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-violet-500/30 bg-violet-500/10 text-violet-400 shrink-0 mt-0.5">mesh</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">mesh</span>
                 <div>
                   <p className="text-[11px] font-medium text-zinc-200">Load 3D Mesh</p>
                   <p className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">Source node. Load a .glb, .obj, .stl or .ply file from disk, or use the model currently loaded in the 3D viewer.</p>
@@ -681,7 +681,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
                 <div className="flex gap-1 shrink-0 mt-0.5">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-sky-500/30 bg-sky-500/10 text-sky-400">image</span>
                   <span className="text-zinc-600 text-[9px] flex items-center">→</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-violet-500/30 bg-violet-500/10 text-violet-400">mesh</span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400">mesh</span>
                 </div>
                 <div>
                   <p className="text-[11px] font-medium text-zinc-200">Model extension <span className="text-[10px] font-normal text-zinc-500">(AI generator)</span></p>
@@ -691,9 +691,9 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 
               <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/40">
                 <div className="flex gap-1 shrink-0 mt-0.5">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-violet-500/30 bg-violet-500/10 text-violet-400">mesh</span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400">mesh</span>
                   <span className="text-zinc-600 text-[9px] flex items-center">→</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-violet-500/30 bg-violet-500/10 text-violet-400">mesh</span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400">mesh</span>
                 </div>
                 <div>
                   <p className="text-[11px] font-medium text-zinc-200">Process extension <span className="text-[10px] font-normal text-zinc-500">(mesh processor)</span></p>
@@ -702,7 +702,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/40">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-violet-500/30 bg-violet-500/10 text-violet-400 shrink-0 mt-0.5">scene</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">scene</span>
                 <div>
                   <p className="text-[11px] font-medium text-zinc-200">Add to Scene</p>
                   <p className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">Terminal node. Receives the final mesh and loads it directly into the 3D viewer when the workflow completes.</p>

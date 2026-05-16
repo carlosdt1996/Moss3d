@@ -50,7 +50,7 @@ export default function Sidebar(): JSX.Element {
   const { currentPage, navigate } = useNavStore()
 
   return (
-    <aside className="flex flex-col w-14 bg-surface-500 border-r border-zinc-800 py-2">
+    <aside className="flex flex-col w-14 bg-surface-500 border-r border-accent/15 py-2">
       {NAV_ITEMS.map((item) => {
         const active = currentPage === item.id
         return (
@@ -62,8 +62,8 @@ export default function Sidebar(): JSX.Element {
               relative flex flex-col items-center justify-center gap-1 h-12 mx-1 my-0.5 rounded
               transition-colors text-[9px] leading-none
               ${active
-                ? 'bg-accent/20 text-accent-light'
-                : 'text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800'}
+                ? 'bg-accent/20 text-accent-light ring-1 ring-accent/30'
+                : 'text-zinc-500 hover:text-accent-light hover:bg-zinc-900/80'}
             `}
           >
             {item.icon}

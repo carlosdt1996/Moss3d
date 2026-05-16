@@ -11,14 +11,14 @@ import BaseNode from './BaseNode'
 
 const HANDLE_COLOR: Record<string, string> = {
   image: '#38bdf8',
-  mesh:  '#a78bfa',
+  mesh:  '#3B82F6',
   text:  '#fbbf24',
 }
 
 const TAG_CLS: Record<string, string> = {
   image: 'border-sky-500/30 bg-sky-500/10 text-sky-400',
-  mesh:  'border-violet-500/30 bg-violet-500/10 text-violet-400',
-  text:  'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  mesh:  'border-blue-500/30 bg-blue-500/10 text-blue-400',
+  text:  'border-sky-500/30 bg-sky-500/10 text-sky-400',
 }
 
 // ─── Param control ────────────────────────────────────────────────────────────

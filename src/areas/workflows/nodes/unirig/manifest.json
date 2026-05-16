@@ -1,0 +1,41 @@
+{
+  "id": "unirig",
+  "name": "UniRig",
+  "type": "process",
+  "entry": "processor.py",
+  "version": "1.0.0",
+  "author": "Moss3D",
+  "description": "Automatic skeleton and skinning rigging powered by UniRig (GPU required).",
+  "nodes": [
+    {
+      "id": "rig",
+      "name": "UniRig",
+      "input": "mesh",
+      "output": "mesh",
+      "params_schema": [
+        {
+          "id": "pipeline",
+          "label": "Pipeline",
+          "type": "select",
+          "default": "full",
+          "options": [
+            { "value": "full", "label": "Skeleton + skin + merge" },
+            { "value": "skeleton", "label": "Skeleton only (FBX)" },
+            { "value": "skin", "label": "Skin only (needs rigged skeleton input)" }
+          ],
+          "tooltip": "Full runs skeleton prediction, skinning, then merges back to GLB. Skin expects an FBX from the skeleton step."
+        },
+        {
+          "id": "seed",
+          "label": "Seed",
+          "type": "int",
+          "default": 12345,
+          "min": 0,
+          "max": 999999,
+          "step": 1,
+          "tooltip": "Random seed for skeleton/skin inference."
+        }
+      ]
+    }
+  ]
+}
