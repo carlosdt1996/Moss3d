@@ -91,6 +91,14 @@ Modly supports external AI model extensions. Each extension is a GitHub reposito
 
 ---
 
+## Workflows: UniRig (rigging)
+
+Moss3D ships a built-in **UniRig** node for automatic skeleton, skinning, and rigged GLB export. Install it with `npm run setup-unirig`, run it from the Workflows editor, and view the rig skeleton in the **Generate** 3D viewer (blue bones through the mesh).
+
+See **[docs/unirig.md](docs/unirig.md)** for setup, pipelines, viewer controls, and Windows troubleshooting.
+
+---
+
 ### Community 
 
 Join the [Discord server](https://discord.gg/BvjDCvS3yr) to stay up to date with the latest news, report bugs, and share feedback.

@@ -175,6 +175,7 @@ MOSS3D_AR_ATTN_MARKER = "# moss3d-sdpa-attn"
 MOSS3D_CKPT_MARKER = "# moss3d-ckpt-load"
 MOSS3D_AR_NPZ_MARKER = "# moss3d-user-mode-npz"
 MOSS3D_MERGE_EXIT_MARKER = "# moss3d-merge-exit"
+MOSS3D_GLTF_EXPORT_MARKER = "# moss3d-gltf-skin-export"
 
 # PLISGOOD wheel: PyTorch 2.11 + cu130 (works with Moss3D torch 2.11+cu128 on Windows).
 FLASH_ATTN_WIN_WHEEL = (
@@ -329,6 +330,7 @@ def apply_unirig_patches(unirig_dir: Path) -> None:
     merge_py = unirig_dir / "src" / "inference" / "merge.py"
     if merge_py.is_file():
         merge_text = merge_py.read_text(encoding="utf-8")
+        merge_changed = False
         if MOSS3D_MERGE_EXIT_MARKER not in merge_text:
             old_merge = (
                 "    if args.source is not None or args.target is not None:\n"
@@ -349,7 +351,29 @@ def apply_unirig_patches(unirig_dir: Path) -> None:
                 log("Warning: could not patch merge.py (transfer block changed upstream)")
             else:
                 log("Patching UniRig merge.py (avoid bpy teardown crash on Windows)…")
-                merge_py.write_text(merge_text.replace(old_merge, new_merge, 1), encoding="utf-8")
+                merge_text = merge_text.replace(old_merge, new_merge, 1)
+                merge_changed = True
+
+        if MOSS3D_GLTF_EXPORT_MARKER not in merge_text:
+            old_gltf = '            bpy.ops.export_scene.gltf(filepath=output_path)'
+            new_gltf = (
+                f"            {MOSS3D_GLTF_EXPORT_MARKER}\n"
+                "            bpy.ops.export_scene.gltf(\n"
+                "                filepath=output_path,\n"
+                "                export_format='GLB',\n"
+                "                export_skins=True,\n"
+                "                export_def_bones=True,\n"
+                "            )"
+            )
+            if old_gltf not in merge_text and MOSS3D_GLTF_EXPORT_MARKER not in merge_text:
+                log("Warning: could not patch merge.py (gltf export line changed upstream)")
+            elif old_gltf in merge_text:
+                log("Patching UniRig merge.py (export skinned GLB with armature)…")
+                merge_text = merge_text.replace(old_gltf, new_gltf, 1)
+                merge_changed = True
+
+        if merge_changed:
+            merge_py.write_text(merge_text, encoding="utf-8")
 
     configs = unirig_dir / "configs"
     if configs.is_dir():

@@ -1,7 +1,8 @@
 import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { GizmoHelper, OrbitControls, useGizmoContext, useGLTF } from '@react-three/drei'
+import { GizmoHelper, OrbitControls, useFBX, useGizmoContext, useGLTF } from '@react-three/drei'
+import { SkeletonOverlay, sceneHasSkeleton, type GltfParserLike } from './SkeletonOverlay'
 import * as THREE from 'three'
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh'
 
@@ -120,23 +121,44 @@ function ModelLoadError(): JSX.Element {
 // MeshModel
 // ---------------------------------------------------------------------------
 
-interface MeshModelProps {
+function modelFileExtension(url: string): string {
+  const path = url.split('?')[0] ?? url
+  return path.split('.').pop()?.toLowerCase() ?? ''
+}
+
+interface RiggedModelProps {
+  scene: THREE.Object3D
   url: string
-  jobId: string
   viewMode: ViewMode
+  showSkeleton: boolean
+  gltfParser?: GltfParserLike
   onStats: (stats: { vertices: number; triangles: number }) => void
+  onHasSkeleton: (has: boolean) => void
   onSelect: () => void
 }
 
-function MeshModel({ url, jobId, viewMode, onStats, onSelect }: MeshModelProps): JSX.Element {
-  const { scene } = useGLTF(url)
+function RiggedModel({
+  scene,
+  url,
+  viewMode,
+  showSkeleton,
+  gltfParser,
+  onStats,
+  onHasSkeleton,
+  onSelect,
+}: RiggedModelProps): JSX.Element {
   const captured = useRef(false)
   const edgeHelpers = useRef<THREE.LineSegments[]>([])
 
-  // Free GPU resources and GLTF cache when this model is replaced or unmounted
+  // Free GPU resources and loader cache when this model is replaced or unmounted
   useEffect(() => {
+    const ext = modelFileExtension(url)
     return () => {
-      useGLTF.clear(url)
+      if (ext === 'fbx') {
+        useFBX.clear(url)
+      } else {
+        useGLTF.clear(url)
+      }
       scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.geometry.dispose()
@@ -145,7 +167,7 @@ function MeshModel({ url, jobId, viewMode, onStats, onSelect }: MeshModelProps):
         }
       })
     }
-  }, [url])
+  }, [url, scene])
 
   // Compute BVH on all geometries for fast raycasting (O(log N) vs O(N)).
   // Also force DoubleSide on every material so faces with inverted normals
@@ -190,7 +212,8 @@ function MeshModel({ url, jobId, viewMode, onStats, onSelect }: MeshModelProps):
     })
     const roundedTriangles = Math.round(triangles)
     onStats({ vertices: Math.round(vertices), triangles: roundedTriangles })
-  }, [scene])
+    onHasSkeleton(sceneHasSkeleton(scene, gltfParser))
+  }, [scene, gltfParser, onStats, onHasSkeleton])
 
   // Thumbnail capture (kept for future use)
   useEffect(() => {
@@ -240,9 +263,37 @@ function MeshModel({ url, jobId, viewMode, onStats, onSelect }: MeshModelProps):
     <primitive
       object={scene}
       onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onSelect() }}
-    />
+    >
+      {showSkeleton && (
+        <SkeletonOverlay key={`skel-${url}`} root={scene} gltfParser={gltfParser} />
+      )}
+    </primitive>
   )
+}
 
+interface MeshModelProps {
+  url: string
+  viewMode: ViewMode
+  showSkeleton: boolean
+  onStats: (stats: { vertices: number; triangles: number }) => void
+  onHasSkeleton: (has: boolean) => void
+  onSelect: () => void
+}
+
+function GltfMeshModel(props: MeshModelProps): JSX.Element {
+  const gltf = useGLTF(props.url) as { scene: THREE.Object3D; parser?: GltfParserLike }
+  return <RiggedModel scene={gltf.scene} gltfParser={gltf.parser} {...props} />
+}
+
+function FbxMeshModel(props: MeshModelProps): JSX.Element {
+  const fbx = useFBX(props.url)
+  return <RiggedModel scene={fbx} {...props} />
+}
+
+function LoadedMeshModel(props: MeshModelProps): JSX.Element {
+  const ext = modelFileExtension(props.url)
+  if (ext === 'fbx') return <FbxMeshModel {...props} />
+  return <GltfMeshModel {...props} />
 }
 
 // ---------------------------------------------------------------------------
@@ -347,6 +398,8 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
 
   const [viewMode, setViewMode] = useState<ViewMode>('solid')
   const [autoRotate, setAutoRotate] = useState(false)
+  const [showSkeleton, setShowSkeleton] = useState(true)
+  const [hasSkeleton, setHasSkeleton] = useState(false)
   const [selected, setSelected] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
@@ -359,6 +412,8 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
   useEffect(() => {
     setSelected(false)
     setViewMode('solid')
+    setShowSkeleton(true)
+    setHasSkeleton(false)
     setStoreMeshStats(null)
   }, [modelUrl])
 
@@ -401,6 +456,9 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
             toneMapping: THREE.NeutralToneMapping,
             toneMappingExposure: 1.8,
           }}
+          onCreated={({ gl }) => {
+            gl.sortObjects = true
+          }}
         >
           <color attach="background" args={['#18181b']} />
           <CanvasCapture domRef={canvasRef} />
@@ -411,11 +469,12 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
             <Suspense fallback={null}>
 <directionalLight position={[5, 8, 5]} color={lightSettings.mainColor} intensity={lightSettings.mainIntensity} castShadow />
               <directionalLight position={[-4, 2, -4]} color={lightSettings.fillColor} intensity={lightSettings.fillIntensity} />
-              <MeshModel
+              <LoadedMeshModel
                 url={modelUrl}
-                jobId={currentJob.id}
                 viewMode={viewMode}
+                showSkeleton={showSkeleton}
                 onStats={setStoreMeshStats}
+                onHasSkeleton={setHasSkeleton}
                 onSelect={() => setSelected(true)}
               />
             </Suspense>
@@ -444,8 +503,11 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
           <ViewerToolbar
             viewMode={viewMode}
             autoRotate={autoRotate}
+            showSkeleton={showSkeleton}
+            hasSkeleton={hasSkeleton}
             onViewMode={setViewMode}
             onAutoRotate={() => setAutoRotate((v) => !v)}
+            onToggleSkeleton={() => setShowSkeleton((v) => !v)}
             onScreenshot={handleScreenshot}
           />
         )}
@@ -455,6 +517,9 @@ export default function Viewer3D({ lightSettings = DEFAULT_LIGHT_SETTINGS }: { l
           <div className="absolute bottom-4 left-4 pointer-events-none">
             <p className="text-xs text-zinc-500">
               {meshStats.triangles.toLocaleString()} tri &bull; {meshStats.vertices.toLocaleString()} verts
+              {hasSkeleton && showSkeleton && (
+                <span className="text-sky-400"> &bull; skeleton</span>
+              )}
             </p>
           </div>
         )}

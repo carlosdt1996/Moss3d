@@ -4,8 +4,11 @@ export type { ViewMode }
 interface ViewerToolbarProps {
   viewMode: ViewMode
   autoRotate: boolean
+  showSkeleton: boolean
+  hasSkeleton: boolean
   onViewMode: (mode: ViewMode) => void
   onAutoRotate: () => void
+  onToggleSkeleton: () => void
   onScreenshot: () => void
 }
 
@@ -69,8 +72,11 @@ const MODES: { mode: ViewMode; icon: React.ReactNode; label: string }[] = [
 export function ViewerToolbar({
   viewMode,
   autoRotate,
+  showSkeleton,
+  hasSkeleton,
   onViewMode,
   onAutoRotate,
+  onToggleSkeleton,
   onScreenshot,
 }: ViewerToolbarProps): JSX.Element {
   return (
@@ -85,6 +91,23 @@ export function ViewerToolbar({
           {icon}
         </ToolbarButton>
       ))}
+
+      <div className="my-1 border-t border-zinc-700/50" />
+
+      {hasSkeleton && (
+        <ToolbarButton
+          active={showSkeleton}
+          label={showSkeleton ? 'Hide skeleton' : 'Show skeleton'}
+          onClick={onToggleSkeleton}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+            <circle cx="6" cy="6" r="2" />
+            <circle cx="18" cy="6" r="2" />
+            <circle cx="12" cy="18" r="2" />
+            <path d="M6 6l6 12M18 6l-6 12M6 6h12" />
+          </svg>
+        </ToolbarButton>
+      )}
 
       <div className="my-1 border-t border-zinc-700/50" />
 
