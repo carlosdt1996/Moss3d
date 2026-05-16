@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { RigBone } from './rigTypes'
 import {
   addChildBone,
+  applyBonesToScene,
   createDefaultHumanoidRig,
   extractBonesFromScene,
   inferBoneGroup,
@@ -61,8 +62,8 @@ export const useRigStore = create<RigState>((set, get) => ({
     })),
 
   moveBoneHead: (id, head) =>
-    set((s) => ({
-      bones: s.bones.map((b) => {
+    set((s) => {
+      const bones = s.bones.map((b) => {
         if (b.id !== id) return b
         const dx = head[0] - b.head[0]
         const dy = head[1] - b.head[1]
@@ -72,8 +73,10 @@ export const useRigStore = create<RigState>((set, get) => ({
           head,
           tail: [b.tail[0] + dx, b.tail[1] + dy, b.tail[2] + dz],
         }
-      }),
-    })),
+      })
+      if (s.sceneRef) applyBonesToScene(s.sceneRef, bones)
+      return { bones }
+    }),
 
   addBone: (parentId) => {
     const pid = parentId ?? get().selectedBoneId ?? get().bones.find((b) => !b.parentId)?.id ?? null

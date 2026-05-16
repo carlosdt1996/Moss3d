@@ -23,66 +23,68 @@ function BoneJoint({
   radius: number
   onSelect: () => void
 }): JSX.Element {
-  const meshRef = useRef<THREE.Mesh>(null)
+  const pivotRef = useRef<THREE.Group>(null)
   const dragging = useRef(false)
   const moveBoneHead = useRigStore((s) => s.moveBoneHead)
   const { controls } = useThree()
 
   useLayoutEffect(() => {
-    if (!selected || !meshRef.current) return
-    meshRef.current.position.set(bone.head[0], bone.head[1], bone.head[2])
-  }, [selected, bone.id])
-
-  const mesh = (
-    <mesh
-      ref={meshRef}
-      position={selected ? undefined : bone.head}
-      renderOrder={1000}
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect()
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <sphereGeometry args={[radius * (selected ? 1.35 : 1), 12, 12]} />
-      <meshBasicMaterial
-        color={selected ? SELECT_COLOR : BONE_COLOR}
-        depthTest={false}
-        depthWrite={false}
-        transparent
-        opacity={1}
-      />
-    </mesh>
-  )
-
-  if (!selected) return mesh
+    if (!pivotRef.current || dragging.current) return
+    pivotRef.current.position.set(bone.head[0], bone.head[1], bone.head[2])
+  }, [bone.head[0], bone.head[1], bone.head[2]])
 
   const commitPosition = () => {
-    if (!meshRef.current) return
-    const p = meshRef.current.position
+    if (!pivotRef.current) return
+    const p = pivotRef.current.position
     moveBoneHead(bone.id, [p.x, p.y, p.z])
   }
 
   return (
-    <TransformControls
-      mode="translate"
-      space="local"
-      size={0.65}
-      onMouseDown={() => {
-        dragging.current = true
-        if (controls && 'enabled' in controls) (controls as { enabled: boolean }).enabled = false
-      }}
-      onMouseUp={() => {
-        dragging.current = false
-        if (controls && 'enabled' in controls) (controls as { enabled: boolean }).enabled = true
-        commitPosition()
-      }}
-      onObjectChange={() => {
-        if (dragging.current) commitPosition()
-      }}
-    >
-      {mesh}
-    </TransformControls>
+    <>
+      <group ref={pivotRef}>
+        <mesh
+          renderOrder={1000}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <sphereGeometry args={[radius * (selected ? 1.35 : 1), 12, 12]} />
+          <meshBasicMaterial
+            color={selected ? SELECT_COLOR : BONE_COLOR}
+            depthTest={false}
+            depthWrite={false}
+            transparent
+            opacity={1}
+          />
+        </mesh>
+      </group>
+      {selected && (
+        <TransformControls
+          object={pivotRef}
+          mode="translate"
+          space="world"
+          size={0.65}
+          onMouseDown={() => {
+            dragging.current = true
+            if (controls && 'enabled' in controls) {
+              (controls as { enabled: boolean }).enabled = false
+            }
+          }}
+          onMouseUp={() => {
+            dragging.current = false
+            if (controls && 'enabled' in controls) {
+              (controls as { enabled: boolean }).enabled = true
+            }
+            commitPosition()
+          }}
+          onObjectChange={() => {
+            if (dragging.current) commitPosition()
+          }}
+        />
+      )}
+    </>
   )
 }
 

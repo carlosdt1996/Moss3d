@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { GltfParserLike } from '@areas/generate/components/SkeletonOverlay'
+import { compareBoneTreeOrder, normalizeBoneHierarchy } from './rigBoneHierarchy'
 import type { RigBone, RigBoneTreeNode } from './rigTypes'
 
 const HAND_KEYS = ['hand', 'thumb', 'index', 'middle', 'ring', 'pinky', 'finger']
@@ -105,7 +106,7 @@ export function extractBonesFromScene(scene: THREE.Object3D, _parser?: GltfParse
       group: inferBoneGroup(bone.name),
     })
   }
-  return bones
+  return normalizeBoneHierarchy(bones)
 }
 
 export function createDefaultHumanoidRig(scene: THREE.Object3D): RigBone[] {
@@ -146,7 +147,7 @@ export function buildBoneTree(bones: RigBone[]): RigBoneTreeNode[] {
     }
   }
   const sortNodes = (nodes: RigBoneTreeNode[]) => {
-    nodes.sort((a, b) => a.name.localeCompare(b.name))
+    nodes.sort(compareBoneTreeOrder)
     for (const n of nodes) sortNodes(n.children)
   }
   sortNodes(roots)
