@@ -218,6 +218,10 @@ declare global {
         repair:      (extensionId: string) => Promise<{ success: boolean; error?: string }>
         reload:      () => Promise<{ success: boolean; error?: string; errors?: Record<string, string> }>
         runProcess:  (extensionId: string, input: ProcessInput, params: Record<string, unknown>) => Promise<{ success: boolean; result?: ProcessResult; error?: string }>
+        onProcessProgress: (cb: (data: { extensionId: string; percent: number; label: string }) => void) => void
+        offProcessProgress: () => void
+        onProcessLog: (cb: (data: { extensionId: string; message: string }) => void) => void
+        offProcessLog: () => void
         onInstallProgress: (cb: (data: {
           step:          'downloading' | 'extracting' | 'validating' | 'setting_up' | 'done' | 'error'
           percent?:      number

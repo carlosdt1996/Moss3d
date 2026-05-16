@@ -4,6 +4,7 @@ import { useAppStore } from '@shared/stores/appStore'
 import { getWorkflowExtension } from './mockExtensions'
 import type { WorkflowExtension } from './mockExtensions'
 import type { Workflow, WFNode, WFEdge } from '@shared/types/electron.d'
+import { bindProcessExtensionProgress } from './processExtensionProgress'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -285,15 +286,36 @@ export const useWorkflowRunStore = create<WorkflowRunStore>((set) => ({
           const parts  = (node.data.extensionId ?? '').split('/')
           const extId  = parts[0]
           const nodeId = parts[1] ?? ''
-          const result = await window.electron.extensions.runProcess(
+          const unbindProgress = bindProcessExtensionProgress(
             extId,
-            { filePath: nodeInputPath, text: nodeInputText, nodeId },
-            node.data.params as Record<string, unknown>,
+            i,
+            execNodes.length,
+            (blockProgress, blockStep, overall) => {
+              set((s) => ({
+                runState: { ...s.runState, blockProgress, blockStep },
+              }))
+              useAppStore.getState().updateCurrentJob({
+                status: 'generating',
+                progress: overall,
+                step: blockStep,
+              })
+            },
           )
+          let result: { success: boolean; result?: { filePath?: string; text?: string }; error?: string }
+          try {
+            result = await window.electron.extensions.runProcess(
+              extId,
+              { filePath: nodeInputPath, text: nodeInputText, nodeId },
+              node.data.params as Record<string, unknown>,
+            )
+          } finally {
+            unbindProgress()
+          }
           if (!result.success) throw new Error(result.error ?? 'Process extension failed')
           nodeInputPath = result.result?.filePath ?? nodeInputPath
           nodeInputText = result.result?.text     ?? nodeInputText
           set((s) => ({ runState: { ...s.runState, blockProgress: 100, blockStep: 'Done' } }))
+          useAppStore.getState().updateCurrentJob({ progress: Math.round(((i + 1) / execNodes.length) * 100), step: 'Done' })
         }
 
         // Store output with type for downstream routing

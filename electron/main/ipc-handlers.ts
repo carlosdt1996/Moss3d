@@ -863,7 +863,7 @@ export function setupIpcHandlers(pythonBridge: PythonBridge, getWindow: WindowGe
   })
 
   // Run a process extension in an isolated worker thread
-  ipcMain.handle('extensions:runProcess', async (_, extensionId: string, input: { filePath?: string; text?: string; nodeId?: string }, params: Record<string, unknown>) => {
+  ipcMain.handle('extensions:runProcess', async (event, extensionId: string, input: { filePath?: string; text?: string; nodeId?: string }, params: Record<string, unknown>) => {
     const userData        = app.getPath('userData')
     const { extensionsDir, workspaceDir } = getSettings(userData)
 
@@ -891,7 +891,17 @@ export function setupIpcHandlers(pythonBridge: PythonBridge, getWindow: WindowGe
         runner = getProcessRunner(extensionId, extDir, entry, workspaceDir, app.getPath('temp'))
       }
 
-      const result = await runner.run(input, params)
+      const webContents = event.sender
+      const result = await runner.run(
+        input,
+        params,
+        (percent, label) => {
+          webContents.send('extensions:processProgress', { extensionId, percent, label })
+        },
+        (message) => {
+          webContents.send('extensions:processLog', { extensionId, message })
+        },
+      )
       return { success: true, result }
     } catch (err) {
       return { success: false, error: String(err) }

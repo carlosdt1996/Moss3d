@@ -1,10 +1,22 @@
 import { join } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { app } from 'electron'
 import { getBuiltinExtensionsDir } from './builtin-sync'
 import { getVenvPythonExe } from './python-setup'
 import { logger } from './logger'
 import { spawn } from 'child_process'
+
+const UNIRIG_DEPS_REVISION = '9'
+
+function unirigMarkerUpToDate(extDir: string): boolean {
+  const marker = join(extDir, '.unirig-ready')
+  if (!existsSync(marker)) return false
+  try {
+    return readFileSync(marker, 'utf8').includes(`deps_revision=${UNIRIG_DEPS_REVISION}`)
+  } catch {
+    return false
+  }
+}
 
 function runExtensionSetupPy(extDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -14,13 +26,12 @@ function runExtensionSetupPy(extDir: string): Promise<void> {
       return
     }
 
-    const marker = join(extDir, '.unirig-ready')
     const venvPy =
       process.platform === 'win32'
         ? join(extDir, 'venv', 'Scripts', 'python.exe')
         : join(extDir, 'venv', 'bin', 'python3')
 
-    if (existsSync(marker) && existsSync(venvPy)) {
+    if (existsSync(venvPy) && unirigMarkerUpToDate(extDir)) {
       resolve()
       return
     }

@@ -1,6 +1,7 @@
 # Moss3D-filtered UniRig deps (see setup.py for flash_attn / bpy handling)
 transformers==4.51.3
 python-box
+PyYAML
 einops
 omegaconf
 pytorch_lightning
@@ -15,3 +16,6 @@ huggingface_hub
 wandb
 numpy==1.26.4
 scipy
+tqdm
+safetensors
+accelerate

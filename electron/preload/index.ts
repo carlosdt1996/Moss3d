@@ -153,6 +153,16 @@ contextBridge.exposeInMainWorld('electron', {
     ): Promise<{ success: boolean; result?: { filePath?: string; text?: string }; error?: string }> =>
       ipcRenderer.invoke('extensions:runProcess', extensionId, input, params),
 
+    onProcessProgress: (cb: (data: { extensionId: string; percent: number; label: string }) => void) => {
+      ipcRenderer.on('extensions:processProgress', (_event, data) => cb(data))
+    },
+    offProcessProgress: () => ipcRenderer.removeAllListeners('extensions:processProgress'),
+
+    onProcessLog: (cb: (data: { extensionId: string; message: string }) => void) => {
+      ipcRenderer.on('extensions:processLog', (_event, data) => cb(data))
+    },
+    offProcessLog: () => ipcRenderer.removeAllListeners('extensions:processLog'),
+
     onInstallProgress: (cb: (data: {
       step: 'downloading' | 'extracting' | 'validating' | 'setting_up' | 'done' | 'error'
       percent?: number

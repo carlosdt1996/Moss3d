@@ -48,7 +48,14 @@ if (!fs.existsSync(path.join(extDir, 'setup.py'))) {
   process.exit(1)
 }
 
-if (fs.existsSync(marker) && fs.existsSync(venvPy)) {
+const DEPS_REVISION = '9'
+function markerRevisionOk() {
+  if (!fs.existsSync(marker)) return false
+  const text = fs.readFileSync(marker, 'utf8')
+  return text.includes(`deps_revision=${DEPS_REVISION}`)
+}
+
+if (fs.existsSync(marker) && fs.existsSync(venvPy) && markerRevisionOk()) {
   console.log('[setup-unirig] UniRig already installed.')
   process.exit(0)
 }
@@ -78,6 +85,27 @@ const proc = spawnSync(bootstrap, [path.join(extDir, 'setup.py'), setupArgs], {
 
 if (proc.status !== 0) {
   process.exit(proc.status ?? 1)
+}
+
+// Also update the runtime copy under %APPDATA%/Moss3D (where Electron runs workflows)
+const appData = process.env.APPDATA
+if (appData) {
+  const runtimeDir = path.join(appData, 'Moss3D', 'builtin-extensions', 'unirig')
+  if (fs.existsSync(path.join(runtimeDir, 'setup.py')) && path.resolve(runtimeDir) !== path.resolve(extDir)) {
+    console.log('[setup-unirig] Updating runtime install in', runtimeDir)
+    const rtArgs = JSON.stringify({
+      python_exe: bootstrap,
+      ext_dir: runtimeDir,
+      gpu_sm: 86,
+      cuda_version: cudaVersion,
+    })
+    const rt = spawnSync(bootstrap, [path.join(runtimeDir, 'setup.py'), rtArgs], {
+      cwd: root,
+      stdio: 'inherit',
+      env: process.env,
+    })
+    if (rt.status !== 0) process.exit(rt.status ?? 1)
+  }
 }
 
 console.log('[setup-unirig] Done.')
