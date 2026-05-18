@@ -1,7 +1,33 @@
 import { Worker }      from 'worker_threads'
-import { spawn }       from 'child_process'
+import { spawn, execSync } from 'child_process'
+import type { ChildProcess } from 'child_process'
 import { existsSync }  from 'fs'
 import { join }        from 'path'
+
+export const PROCESS_CANCELLED = 'PROCESS_CANCELLED'
+
+export class ProcessCancelledError extends Error {
+  constructor() {
+    super(PROCESS_CANCELLED)
+    this.name = 'ProcessCancelledError'
+  }
+}
+
+function killProcessTree(proc: ChildProcess): void {
+  if (!proc.pid) {
+    try { proc.kill('SIGKILL') } catch { /* ignore */ }
+    return
+  }
+  try {
+    if (process.platform === 'win32') {
+      execSync(`taskkill /PID ${proc.pid} /T /F`, { stdio: 'ignore' })
+    } else {
+      proc.kill('SIGTERM')
+    }
+  } catch {
+    try { proc.kill('SIGKILL') } catch { /* ignore */ }
+  }
+}
 
 // ─── Worker code for JS process extensions ────────────────────────────────────
 
@@ -65,6 +91,7 @@ export interface IProcessRunner {
     onLog?:      (message: string) => void,
   ): Promise<ProcessResult>
   terminate(): void
+  cancelActiveRun(): boolean
 }
 
 // ─── JS ProcessRunner (Worker thread) ────────────────────────────────────────
@@ -76,6 +103,7 @@ export class ProcessRunner implements IProcessRunner {
   private entry:    string
   private workspaceDir: string
   private tempDir:  string
+  private runReject: ((err: Error) => void) | null = null
 
   constructor(extDir: string, entry: string, workspaceDir: string, tempDir: string) {
     this.extDir       = extDir
@@ -125,15 +153,19 @@ export class ProcessRunner implements IProcessRunner {
     const worker = this.worker!
 
     return new Promise((resolve, reject) => {
+      this.runReject = reject
+
       const handler = (msg: { type: string; result?: ProcessResult; message?: string; percent?: number; label?: string }) => {
         if (msg.type === 'progress') {
           onProgress?.(msg.percent ?? 0, msg.label ?? '')
         } else if (msg.type === 'log') {
           onLog?.(msg.message ?? '')
         } else if (msg.type === 'done') {
+          this.runReject = null
           worker.off('message', handler)
           resolve(msg.result ?? {})
         } else if (msg.type === 'error') {
+          this.runReject = null
           worker.off('message', handler)
           reject(new Error(msg.message))
         }
@@ -144,10 +176,22 @@ export class ProcessRunner implements IProcessRunner {
     })
   }
 
+  cancelActiveRun(): boolean {
+    if (this.runReject) {
+      const reject = this.runReject
+      this.runReject = null
+      reject(new ProcessCancelledError())
+      this.terminate()
+      return true
+    }
+    return false
+  }
+
   terminate(): void {
     this.worker?.terminate()
     this.worker = null
     this.ready  = false
+    this.runReject = null
   }
 }
 
@@ -161,6 +205,9 @@ export class PythonProcessRunner implements IProcessRunner {
   private scriptPath:   string
   private workspaceDir: string
   private tempDir:      string
+  private activeProc:   ChildProcess | null = null
+  private activeReject: ((err: Error) => void) | null = null
+  private cancelled = false
 
   constructor(pythonExe: string, extDir: string, entry: string, workspaceDir: string, tempDir: string) {
     this.pythonExe    = pythonExe
@@ -176,11 +223,19 @@ export class PythonProcessRunner implements IProcessRunner {
     onLog?:      (message: string) => void,
   ): Promise<ProcessResult> {
     return new Promise((resolve, reject) => {
+      this.cancelled = false
+      this.activeReject = reject
+
       const proc = spawn(this.pythonExe, [this.scriptPath], {
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1',
+          PYTHONIOENCODING: 'utf-8',
+        },
       })
+      this.activeProc = proc
 
-      // Send input as a single JSON line on stdin
       proc.stdin.write(JSON.stringify({
         input,
         params,
@@ -192,6 +247,15 @@ export class PythonProcessRunner implements IProcessRunner {
 
       let stdoutBuf = ''
       let resolved  = false
+      let lastError: string | null = null
+
+      const finish = (fn: () => void) => {
+        if (resolved) return
+        resolved = true
+        this.activeProc = null
+        this.activeReject = null
+        fn()
+      }
 
       proc.stdout.on('data', (chunk: Buffer) => {
         stdoutBuf += chunk.toString()
@@ -208,45 +272,79 @@ export class PythonProcessRunner implements IProcessRunner {
             } else if (msg.type === 'log') {
               onLog?.(msg.message ?? '')
             } else if (msg.type === 'done') {
-              resolved = true
-              resolve(msg.result ?? {})
+              finish(() => resolve(msg.result ?? {}))
             } else if (msg.type === 'error') {
-              resolved = true
-              reject(new Error(msg.message ?? 'Unknown error'))
+              lastError = msg.message ?? 'Unknown error'
+              finish(() => reject(new Error(lastError!)))
             }
           } catch {
-            // Non-JSON stdout line — treat as a log message
             onLog?.(trimmed)
           }
         }
       })
 
-      let stderrBuf = ''
       proc.stderr.on('data', (chunk: Buffer) => {
-        stderrBuf += chunk.toString()
+        const text = chunk.toString()
+        for (const line of text.split('\n')) {
+          const trimmed = line.trim()
+          if (trimmed) onLog?.(`[stderr] ${trimmed}`)
+        }
       })
 
       proc.on('close', (code) => {
         if (!resolved) {
-          if (code === 0) {
-            resolve({})
+          if (stdoutBuf.trim()) {
+            try {
+              const msg = JSON.parse(stdoutBuf.trim()) as { type: string; message?: string; result?: ProcessResult }
+              if (msg.type === 'error') {
+                lastError = msg.message ?? 'Unknown error'
+                finish(() => reject(new Error(lastError!)))
+                this.cancelled = false
+                return
+              } else if (msg.type === 'done') {
+                finish(() => resolve(msg.result ?? {}))
+                this.cancelled = false
+                return
+              }
+            } catch { /* not valid JSON, ignore */ }
+          }
+          if (this.cancelled) {
+            finish(() => reject(new ProcessCancelledError()))
+          } else if (code === 0) {
+            finish(() => resolve({}))
           } else {
-            reject(new Error(stderrBuf.trim() || `Python process exited with code ${code}`))
+            const reason = lastError ?? `Python process exited with code ${code}`
+            finish(() => reject(new Error(reason)))
           }
         }
+        this.cancelled = false
       })
 
       proc.on('error', (err) => {
-        if (!resolved) {
-          resolved = true
-          reject(err)
-        }
+        finish(() => {
+          if (this.cancelled) reject(new ProcessCancelledError())
+          else reject(err)
+        })
       })
     })
   }
 
-  // Python processes are spawned per run — nothing persistent to terminate
-  terminate(): void {}
+  cancelActiveRun(): boolean {
+    if (!this.activeProc) return false
+    this.cancelled = true
+    if (this.activeReject) {
+      const reject = this.activeReject
+      this.activeReject = null
+      reject(new ProcessCancelledError())
+    }
+    killProcessTree(this.activeProc)
+    this.activeProc = null
+    return true
+  }
+
+  terminate(): void {
+    this.cancelActiveRun()
+  }
 }
 
 // ─── Helper: find Python executable for an extension ─────────────────────────
@@ -301,4 +399,14 @@ export function terminateProcessRunner(extensionId: string): void {
 export function terminateAllProcessRunners(): void {
   for (const runner of registry.values()) runner.terminate()
   registry.clear()
+}
+
+/** Kill any in-flight process extension run (e.g. HY-Motion / UniRig). */
+export function cancelActiveProcessRun(extensionId?: string): boolean {
+  let cancelled = false
+  for (const [id, runner] of registry) {
+    if (extensionId && id !== extensionId) continue
+    if (runner.cancelActiveRun()) cancelled = true
+  }
+  return cancelled
 }
