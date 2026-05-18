@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { GltfParserLike } from '@areas/generate/components/SkeletonOverlay'
-import { compareBoneTreeOrder, normalizeBoneHierarchy } from './rigBoneHierarchy'
+import { compareBoneTreeOrder } from './rigBoneHierarchy'
 import type { RigBone, RigBoneTreeNode } from './rigTypes'
 
 const HAND_KEYS = ['hand', 'thumb', 'index', 'middle', 'ring', 'pinky', 'finger']
@@ -44,8 +44,18 @@ function findSkinnedMeshes(root: THREE.Object3D): THREE.SkinnedMesh[] {
 
 function collectBoneObjects(root: THREE.Object3D): THREE.Bone[] {
   const skinned = findSkinnedMeshes(root)
-  if (skinned.length > 0 && skinned[0].skeleton?.bones.length) {
-    return [...skinned[0].skeleton.bones]
+  if (skinned.length > 0) {
+    const seen = new Set<string>()
+    const bones: THREE.Bone[] = []
+    for (const mesh of skinned) {
+      for (const bone of mesh.skeleton?.bones ?? []) {
+        if (!seen.has(bone.uuid)) {
+          seen.add(bone.uuid)
+          bones.push(bone)
+        }
+      }
+    }
+    if (bones.length > 0) return bones
   }
   const bones: THREE.Bone[] = []
   root.traverse((obj) => {
@@ -74,19 +84,60 @@ export function centerSceneOnGrid(scene: THREE.Object3D): void {
   scene.position.set(-center.x, -box.min.y, -center.z)
 }
 
-export function extractBonesFromScene(scene: THREE.Object3D, _parser?: GltfParserLike): RigBone[] {
+export function extractBonesFromScene(scene: THREE.Object3D, parser?: GltfParserLike): RigBone[] {
   scene.updateMatrixWorld(true)
   const invRoot = scene.matrixWorld.clone().invert()
   const boneObjs = collectBoneObjects(scene)
+
+  if (parser?.json?.skins?.length && parser.nodes?.length) {
+    const boneUuidSet = new Set(boneObjs.map((b) => b.uuid))
+    for (const skin of parser.json.skins) {
+      for (const jointIdx of skin.joints ?? []) {
+        const jointObj = parser.nodes[jointIdx]
+        if (jointObj && !boneUuidSet.has(jointObj.uuid)) {
+          boneObjs.push(jointObj as unknown as THREE.Bone)
+          boneUuidSet.add(jointObj.uuid)
+        }
+      }
+    }
+  }
+
   if (!boneObjs.length) return []
 
   const idByUuid = new Map<string, string>()
   for (const b of boneObjs) idByUuid.set(b.uuid, b.uuid)
 
+  const parserParent = new Map<string, string | null>()
+  if (parser?.json?.skins?.length && parser.nodes?.length && parser.json.nodes) {
+    const objNodes = parser.nodes
+    const jointUuidSet = new Set<string>()
+    for (const skin of parser.json.skins) {
+      for (const jointIdx of skin.joints ?? []) {
+        const obj = objNodes[jointIdx]
+        if (obj) jointUuidSet.add(obj.uuid)
+      }
+    }
+    for (const skin of parser.json.skins) {
+      for (const jointIdx of skin.joints ?? []) {
+        const jointObj = objNodes[jointIdx]
+        if (!jointObj) continue
+        const nodeDef = parser.json.nodes[jointIdx]
+        for (const childIdx of nodeDef?.children ?? []) {
+          const childObj = objNodes[childIdx]
+          if (childObj && jointUuidSet.has(childObj.uuid)) {
+            parserParent.set(childObj.uuid, jointObj.uuid)
+          }
+        }
+      }
+    }
+  }
+
   const bones: RigBone[] = []
   for (const bone of boneObjs) {
     const head = vec3FromObject3D(bone, invRoot)
-    const parentId = parentBoneId(bone, idByUuid)
+    const parentId = parserParent.has(bone.uuid)
+      ? parserParent.get(bone.uuid) ?? null
+      : parentBoneId(bone, idByUuid)
     const parentHead = parentId
       ? bones.find((x) => x.id === parentId)?.head ?? null
       : null
@@ -106,7 +157,7 @@ export function extractBonesFromScene(scene: THREE.Object3D, _parser?: GltfParse
       group: inferBoneGroup(bone.name),
     })
   }
-  return normalizeBoneHierarchy(bones)
+  return bones
 }
 
 export function createDefaultHumanoidRig(scene: THREE.Object3D): RigBone[] {
@@ -172,7 +223,7 @@ function closestBone(head: [number, number, number], candidates: RigBone[]): Rig
   return best
 }
 
-export function findReparentTarget(
+function findReparentTarget(
   bones: RigBone[],
   child: RigBone,
   removed: RigBone,
