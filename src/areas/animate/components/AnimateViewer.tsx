@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { GizmoHelper, OrbitControls, useGLTF, useGizmoContext } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,6 +6,7 @@ import { useAppStore } from '@shared/stores/appStore'
 import { useAnimateStore } from '../animateStore'
 import { evaluateClipAtTime, extractClipsFromGltf } from '../animationEngine'
 import { ModelErrorBoundary, ModelLoadError } from '@shared/components/ui'
+import { SkeletonOverlay, sceneHasSkeleton, type GltfParserLike } from '@areas/generate/components/SkeletonOverlay'
 
 const COLOR_BG = '#18181b'
 
@@ -87,9 +88,14 @@ function findBoneObject(scene: THREE.Object3D, name: string): THREE.Object3D | n
   return found
 }
 
-function AnimatedModel({ url }: { url: string }) {
-  const gltf = useGLTF(url)
-  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
+function AnimatedModel({ url, showSkeleton, onHasSkeleton }: {
+  url: string
+  showSkeleton: boolean
+  onHasSkeleton: (has: boolean) => void
+}) {
+  const gltf = useGLTF(url) as { scene: THREE.Object3D; animations?: THREE.AnimationClip[]; parser?: GltfParserLike }
+  const scene = gltf.scene
+  if (!scene) return null
 
   const activeClipId = useAnimateStore((s) => s.activeClipId)
   const clips = useAnimateStore((s) => s.clips)
@@ -103,50 +109,54 @@ function AnimatedModel({ url }: { url: string }) {
   const setBones = useAnimateStore((s) => s.setBones)
   const addKeyframe = useAnimateStore((s) => s.addKeyframe)
   const setSceneRef = useAnimateStore((s) => s.setSceneRef)
-  const storeClips = useAnimateStore((s) => s.clips)
 
   const clockRef = useRef(0)
   const hasInitialized = useRef(false)
+
+  useEffect(() => {
+    hasInitialized.current = false
+    clockRef.current = 0
+  }, [url])
 
   const activeClip = useMemo(() => clips.find((c) => c.id === activeClipId) ?? null, [clips, activeClipId])
 
   // Initialize bones from scene on first frame and extract GLTF animations
   useFrame((_, delta) => {
     if (!hasInitialized.current) {
-      const foundNames: string[] = []
-      scene.traverse((child) => {
-        if ((child instanceof THREE.Bone || child.type === 'Bone') && child.name) {
-          foundNames.push(child.name)
+      try {
+        const foundNames: string[] = []
+        scene.traverse((child) => {
+          if ((child instanceof THREE.Bone || child.type === 'Bone') && child.name) {
+            foundNames.push(child.name)
+          }
+        })
+        if (bones.length === 0 && foundNames.length > 0) {
+          scene.updateMatrixWorld(true)
+          const newBones = foundNames.map((name, i) => ({
+            id: `bone-${i}-${name}`,
+            name,
+            parentId: null as string | null,
+            head: [0, 0, 0] as [number, number, number],
+            tail: [0, 0.1, 0] as [number, number, number],
+            group: 'other' as const,
+          }))
+          setBones(newBones)
         }
-      })
-      if (bones.length === 0 && foundNames.length > 0) {
-        scene.updateMatrixWorld(true)
-        const newBones = foundNames.map((name, i) => ({
-          id: `bone-${i}-${name}`,
-          name,
-          parentId: null as string | null,
-          head: [0, 0, 0] as [number, number, number],
-          tail: [0, 0.1, 0] as [number, number, number],
-          group: 'other' as const,
-        }))
-        setBones(newBones)
-      }
 
-      // Extract animation clips from the GLTF if present
-      if (gltf.animations && gltf.animations.length > 0) {
-        const importedClips = extractClipsFromGltf(gltf)
-        if (importedClips.length > 0 && storeClips.length === 0) {
-          // Load clips into the store using setState directly
-          const st = useAnimateStore.getState()
-          // Replace empty clips with imported ones
-          useAnimateStore.setState({
-            clips: importedClips,
-            activeClipId: importedClips[0]?.id ?? null,
-          })
+        if (gltf.animations && gltf.animations.length > 0) {
+          const importedClips = extractClipsFromGltf(gltf)
+          if (importedClips.length > 0 && useAnimateStore.getState().clips.length === 0) {
+            useAnimateStore.setState({
+              clips: importedClips,
+              activeClipId: importedClips[0]?.id ?? null,
+            })
+          }
         }
-      }
 
-      hasInitialized.current = true
+        onHasSkeleton(sceneHasSkeleton(scene, gltf.parser))
+      } finally {
+        hasInitialized.current = true
+      }
     }
 
     if (!playing || !activeClip) return
@@ -165,8 +175,8 @@ function AnimatedModel({ url }: { url: string }) {
 
   // Sync clock on play/pause
   useEffect(() => {
-    if (!playing) clockRef.current = currentTime
-  }, [playing, currentTime])
+    clockRef.current = currentTime
+  }, [playing])
 
   // Apply pose on scrub
   useEffect(() => {
@@ -201,14 +211,20 @@ function AnimatedModel({ url }: { url: string }) {
       ],
       scale: [boneObj.scale.x, boneObj.scale.y, boneObj.scale.z],
     })
-  }, [activeClip, bones, selectedBoneId, addKeyframe])
+  }, [activeClip, bones, selectedBoneId, addKeyframe, scene])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  return <primitive object={scene} />
+  return (
+    <primitive object={scene}>
+      {showSkeleton && (
+        <SkeletonOverlay key={`skel-${url}`} root={scene} gltfParser={gltf.parser} />
+      )}
+    </primitive>
+  )
 }
 
 function EmptyState(): JSX.Element {
@@ -229,6 +245,15 @@ export default function AnimateViewer(): JSX.Element {
   const modelUrl = meshUrl
     ? (meshUrl.startsWith('http') ? meshUrl : `${apiUrl}${meshUrl}`)
     : null
+
+  const [showSkeleton, setShowSkeleton] = useState(true)
+  const [hasSkeleton, setHasSkeleton] = useState(false)
+
+  useEffect(() => {
+    if (!modelUrl) return
+    setShowSkeleton(true)
+    setHasSkeleton(false)
+  }, [modelUrl])
 
   return (
     <ModelErrorBoundary resetKey={modelUrl} fallback={<ModelLoadError />}>
@@ -255,7 +280,7 @@ export default function AnimateViewer(): JSX.Element {
 
         {modelUrl && (
           <Suspense fallback={null}>
-            <AnimatedModel url={modelUrl} />
+            <AnimatedModel url={modelUrl} showSkeleton={showSkeleton} onHasSkeleton={setHasSkeleton} />
           </Suspense>
         )}
 
@@ -276,9 +301,33 @@ export default function AnimateViewer(): JSX.Element {
       </Canvas>
 
       {meshUrl && (
-        <div className="absolute bottom-4 right-4 pointer-events-none">
-          <p className="text-[10px] text-zinc-600">Press K to add keyframe</p>
-        </div>
+        <>
+          {hasSkeleton && (
+            <div className="absolute bottom-4 left-4">
+              <button
+                type="button"
+                onClick={() => setShowSkeleton((v) => !v)}
+                title={showSkeleton ? 'Hide skeleton' : 'Show skeleton'}
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs transition-colors ${
+                  showSkeleton
+                    ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                    : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300'
+                }`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <circle cx="6" cy="6" r="2" />
+                  <circle cx="18" cy="6" r="2" />
+                  <circle cx="12" cy="18" r="2" />
+                  <path d="M6 6l6 12M18 6l-6 12M6 6h12" />
+                </svg>
+                <span className="text-[10px]">Skeleton</span>
+              </button>
+            </div>
+          )}
+          <div className="absolute bottom-4 right-4 pointer-events-none">
+            <p className="text-[10px] text-zinc-600">Press K to add keyframe</p>
+          </div>
+        </>
       )}
     </div>
     </ModelErrorBoundary>
