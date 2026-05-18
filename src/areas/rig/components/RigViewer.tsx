@@ -8,6 +8,7 @@ import { useAppStore } from '@shared/stores/appStore'
 import { useRigStore } from '../rigStore'
 import { centerSceneOnGrid } from '../rigSkeleton'
 import { EditableSkeleton } from './EditableSkeleton'
+import { ModelErrorBoundary, ModelLoadError } from '@shared/components/ui'
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree as never
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree as never
@@ -129,6 +130,8 @@ export default function RigViewer(): JSX.Element {
   }
 
   return (
+    <ModelErrorBoundary resetKey={fullUrl} fallback={<ModelLoadError />}>
+    <div className="relative w-full h-full">
     <Canvas
       className="w-full h-full"
       camera={{ position: [2.2, 1.6, 2.8], fov: 45, near: 0.01, far: 1000 }}
@@ -138,5 +141,7 @@ export default function RigViewer(): JSX.Element {
     >
       <RigScene url={fullUrl} />
     </Canvas>
+    </div>
+    </ModelErrorBoundary>
   )
 }

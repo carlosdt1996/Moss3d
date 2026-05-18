@@ -1,8 +1,8 @@
-import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { GizmoHelper, OrbitControls, useFBX, useGizmoContext, useGLTF } from '@react-three/drei'
 import { SkeletonOverlay, sceneHasSkeleton, type GltfParserLike } from './SkeletonOverlay'
+import { ModelErrorBoundary, ModelLoadError } from '@shared/components/ui'
 import * as THREE from 'three'
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh'
 
@@ -66,55 +66,6 @@ function CanvasCapture({
     domRef.current = gl.domElement
   }, [gl])
   return null
-}
-
-// ---------------------------------------------------------------------------
-// ModelErrorBoundary — catches useGLTF load failures (e.g. 404)
-// ---------------------------------------------------------------------------
-
-interface ErrorBoundaryProps {
-  children: ReactNode
-  fallback: ReactNode
-  resetKey?: string | null
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean
-}
-
-class ModelErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false }
-
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true }
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.warn('[Viewer3D] Failed to load model:', error.message, info.componentStack)
-  }
-
-  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
-    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false })
-    }
-  }
-
-  render(): ReactNode {
-    return this.state.hasError ? this.props.fallback : this.props.children
-  }
-}
-
-function ModelLoadError(): JSX.Element {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 pointer-events-none">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="15" y1="9" x2="9" y2="15" />
-        <line x1="9" y1="9" x2="15" y2="15" />
-      </svg>
-      <p className="mt-3 text-sm">Model file not found</p>
-    </div>
-  )
 }
 
 // ---------------------------------------------------------------------------
